@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                echo "${DATE_GROOVY}"
+                echo 'Building..'
             }
         }
         stage('Test') {
