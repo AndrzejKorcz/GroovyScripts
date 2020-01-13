@@ -25,7 +25,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying..'
-                
+                echo "I like to eat ${FAVOURITE_FRUIT} fruit"
             }
         }
     }
