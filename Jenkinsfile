@@ -1,12 +1,10 @@
-def config
-def value
 pipeline {
      agent {
         label 'master' 
         }
      environment {
-    FAVOURITE_FRUIT = 'tomato'
-}
+             FAVOURITE_FRUIT = 'tomato'
+     }
     stages {
         stage('Build') {
             steps {
