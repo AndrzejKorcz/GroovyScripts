@@ -1,7 +1,9 @@
 def config
 def value
 pipeline {
-    agent any
+     agent {
+        label 'master' 
+        }
     stages {
         stage('Build') {
             steps {
