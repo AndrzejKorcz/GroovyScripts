@@ -7,7 +7,7 @@ pipeline {
             steps {
                 echo 'Building..'
                 script{
-                    config = readYaml(file:'config.yaml')
+                    println("Running job ${env.JOB_NAME}")
                
                       }
             }
