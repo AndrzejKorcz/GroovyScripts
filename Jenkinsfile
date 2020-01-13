@@ -1,9 +1,15 @@
+def config
+def value
 pipeline {
     agent any
     stages {
         stage('Build') {
             steps {
                 echo 'Building..'
+                script{
+                    config = readYaml(file:'config.yaml')
+               
+                      }
             }
         }
         stage('Test') {
@@ -14,10 +20,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying..'
-                println("Running job ${env.JOB_NAME}")
-                def config = readYaml(file:'config.yaml')
-                def value = env.getProperty(config.myconfig.key)
-                println("Value of property ${config.myconfig.key} is ${value}")
+                
             }
         }
     }
