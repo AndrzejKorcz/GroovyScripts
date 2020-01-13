@@ -4,6 +4,9 @@ pipeline {
      agent {
         label 'master' 
         }
+     environment {
+    FAVOURITE_FRUIT = 'tomato'
+}
     stages {
         stage('Build') {
             steps {
