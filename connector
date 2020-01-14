@@ -1,5 +1,5 @@
 node ('master') {    
-    def props = readProperties file: 'extravars.properties'
+    def props = readProperties file: '${workspace}/extravars.properties'
     env.WORKSPACE = props.WORKSPACE
     echo "The workspace is ${WORKSPACE}"
     def srcDir = 'd:\\Dane\\Portable\\eclipse\\workspace\\AS400connector\\'
