@@ -1,7 +1,7 @@
 node ('master') {    
     def at = '@script'
     def props = readProperties file: "${workspace}${at}/extravars.properties"
-    env.DIR = props.WORKSPACE + props.AS400CONNECTOR    
+    env.DIR = props.WORKSPACE + "${JOB_NAME}"    
     echo "The path is ${DIR}"
     echo "Job name is ${JOB_NAME}"
 
