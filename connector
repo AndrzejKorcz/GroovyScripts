@@ -1,6 +1,4 @@
-node {
-
-    
+node ('master') {    
     stage 'Go to project directory'
     dir('d:\\Dane\\Portable\\eclipse\\workspace\\AS400connector\\') {
         stage 'Project clean'
