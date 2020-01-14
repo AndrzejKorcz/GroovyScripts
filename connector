@@ -18,6 +18,9 @@ node ('master') {
                 bat 'mvn sonar:sonar'
               }   
               
+        stage 'Project install'
+        bat 'mvn install'
+              
      }  
 
 }
