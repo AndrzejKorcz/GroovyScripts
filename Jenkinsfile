@@ -6,6 +6,8 @@ pipeline {
              FAVOURITE_FRUIT = 'tomato'
      }
     stages {
+       dir('d:\\Dane\\Portable\\eclipse\\workspace\\AS400connector\\') {
+                      
         stage('Build') {
             steps {
                 echo 'Building..'
@@ -28,5 +30,7 @@ pipeline {
                 echo "I like to eat ${FAVOURITE_FRUIT} fruit"
             }
         }
+      }        
+              
     }
 }
