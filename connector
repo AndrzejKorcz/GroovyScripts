@@ -3,6 +3,13 @@ node ('master') {
     env.WORKSPACE = props.WORKSPACE
     echo "The workspace is ${WORKSPACE}"
     def srcDir = 'd:\\Dane\\Portable\\eclipse\\workspace\\AS400connector\\'
+    stage 'test'
+    script{
+                    println("Running job ${env.JOB_NAME}")
+                    def props = readProperties file: 'extravars.properties'
+                    env.WEATHER = props.WEATHER
+                     echo "The weather is ${WEATHER}"
+                      }
     stage 'Go to project directory'
     dir(srcDir) {
         stage 'Project clean'
@@ -14,7 +21,8 @@ node ('master') {
         stage 'Project analize - sonar'
         withSonarQubeEnv('sonar-server') {
                 bat 'mvn sonar:sonar'
-              }          
+              }   
+              
      }  
 
 }
