@@ -15,9 +15,6 @@ node ('master') {
         stage 'Project analize - sonar'
         withSonarQubeEnv('sonar-server') {
                 bat 'mvn sonar:sonar'
-              }   
-              
-        stage 'Copy .jar file'
-        bat 'COPY ".\\target\\as400CommandCall-1.0-SNAPSHOT-jar-with-dependencies.jar" "d:\\DevOps\\bin\\jar\\ibmicmd.jar"'              
+        }             
      }  
 }
