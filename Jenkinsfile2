@@ -1,7 +1,7 @@
 node ('master') {    
     def props = readProperties file: "${workspace}/extravars.properties"
     env.DIR = props.WORKSPACE + "${JOB_NAME}"    
-    echo "The path is ${DIR}
+    echo "The path is ${DIR}"
 
     stage 'Go to project directory'
     dir("${DIR}") {
