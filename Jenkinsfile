@@ -5,7 +5,8 @@ pipeline {
      environment {
              FAVOURITE_FRUIT = 'tomato'
      }
-    stages {
+    
+                      
         stage('Build') {
             steps {
                 echo 'Building..'
@@ -28,5 +29,7 @@ pipeline {
                 echo "I like to eat ${FAVOURITE_FRUIT} fruit"
             }
         }
+         
+              
     }
 }

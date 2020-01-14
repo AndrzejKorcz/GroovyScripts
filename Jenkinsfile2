@@ -1,0 +1,22 @@
+node ('master') {    
+    def props = readProperties file: "${workspace}/extravars.properties"
+    env.DIR = props.WORKSPACE + "${JOB_NAME}"    
+    echo "The path is ${DIR}"
+
+    stage 'Go to project directory'
+    dir("${DIR}") {
+        stage 'Project clean'
+        bat 'mvn clean'
+        
+        stage 'Project verify'
+        bat 'mvn verify'
+        
+        stage 'Project analize - sonar'
+        withSonarQubeEnv('sonar-server') {
+                bat 'mvn sonar:sonar'
+              }   
+              
+        stage 'Copy .jar file'
+        bat 'COPY ".\\target\\as400CommandCall-1.0-SNAPSHOT-jar-with-dependencies.jar" "d:\\DevOps\\bin\\jar\\ibmicmd.jar"'              
+     }  
+}
