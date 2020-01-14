@@ -1,4 +1,9 @@
 node {
+    println("Running job ${env.JOB_NAME}")
+    def config = readYaml(file:'config.yaml')
+    def value = env.getProperty(config.myconfig.key)
+    println("Value of property ${config.myconfig.key} is ${value}")     
+    
     stage 'Go to project directory'
     dir('d:\\Dane\\Portable\\eclipse\\workspace\\AS400connector\\') {
         stage 'Project clean'
@@ -12,4 +17,5 @@ node {
                 bat 'mvn sonar:sonar'
               }          
      }  
+
 }
