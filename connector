@@ -3,7 +3,6 @@ node ('master') {
     def props = readProperties file: "${workspace}${at}/extravars.properties"
     env.DIR = props.WORKSPACE + props.AS400CONNECTOR    
     echo "The path is ${DIR}"
-    def srcDir = 'd:\\Dane\\Portable\\eclipse\\workspace\\AS400connector\\'
 
     stage 'Go to project directory'
     dir("${DIR}") {
