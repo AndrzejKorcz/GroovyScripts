@@ -3,6 +3,7 @@ node ('master') {
     def props = readProperties file: "${workspace}${at}/extravars.properties"
     env.DIR = props.WORKSPACE + props.AS400CONNECTOR    
     echo "The path is ${DIR}"
+    echo "Job name is ${JOB_NAME}"
 
     stage 'Go to project directory'
     dir("${DIR}") {
