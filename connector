@@ -6,7 +6,7 @@ node ('master') {
     def srcDir = 'd:\\Dane\\Portable\\eclipse\\workspace\\AS400connector\\'
 
     stage 'Go to project directory'
-    dir(srcDir) {
+    dir("${DIR}") {
         stage 'Project clean'
         bat 'mvn clean'
         
