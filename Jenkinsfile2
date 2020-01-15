@@ -19,5 +19,8 @@ node ('master') {
         
         stage 'Project compile'
         bat 'mvn clean compile assembly:single'
+        
+        stage 'Copy .jar file'
+        bat 'copyJar.cmd'
      }  
 }
