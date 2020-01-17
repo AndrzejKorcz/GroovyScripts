@@ -1,5 +1,6 @@
 node ('master') {    
-    def props = readProperties file: "${workspace}/extravars.properties"
+    def at = '@script'
+    def props = readProperties file: "${workspace}${at}/extravars.properties"
     env.DIR = props.WORKSPACE + "${JOB_NAME}"    
     echo "The path is ${DIR}"
 
@@ -16,12 +17,22 @@ node ('master') {
         stage ('Project analize - sonar') {
         withSonarQubeEnv('sonar-server') {
                 bat 'mvn sonar:sonar'
+<<<<<<< HEAD
               } 
         }			  
               
         stage ('Copy .jar file') {
         bat 'COPY ".\\target\\as400CommandCall-1.0-SNAPSHOT-jar-with-dependencies.jar" "d:\\DevOps\\bin\\jar\\ibmicmd.jar"' 
         }		
+=======
+        }    
+        
+        stage 'Project compile'
+        bat 'mvn clean compile assembly:single'
+        
+        stage 'Copy .jar file'
+        bat 'copyJar.cmd'
+>>>>>>> ecdf5649f6eac032f94dc926bfed1cac021ff919
      }  
 	 }
 }
