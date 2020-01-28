@@ -2,20 +2,16 @@ pipeline {
      agent {
         label 'master' 
         }
-     environment {
-             FAVOURITE_FRUIT = 'tomato'
-     }
-    
-                      
+           environment {
+             DEVOPS_FOLDER = 'd:\\DevOps\\bin\\'
+           }
+                          
         stage('Build') {
             steps {
                 echo 'Building..'
                 script{
                     println("Running job ${env.JOB_NAME}")
-                    def props = readProperties file: 'extravars.properties'
-                    env.WEATHER = props.WEATHER
-                     echo "The weather is ${WEATHER}"
-                      }
+                 }
             }
         }
         stage('Test') {
@@ -26,7 +22,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying..'
-                echo "I like to eat ${FAVOURITE_FRUIT} fruit"
+                echo "DevOps folder is ${DEVOPS_FOLDER} "
             }
         }
          
