@@ -2,13 +2,17 @@ pipeline {
   agent {
     node {
       label 'master'
-      customWorkspace '/some/other/path'
+      customWorkspace 'd:/DevOps/bin/'
     }
   }
     
    environment {
       DEVOPS_FOLDER = 'd:\\DevOps\\bin\\'
    }
+  
+  parameters {
+        string(name: 'PROJECT', defaultValue: 'J127404', description: 'Acms task.')
+    }
   
   stages {
 
@@ -17,9 +21,8 @@ pipeline {
           echo 'Building..'
           script{
              println("Running job ${env.JOB_NAME}")
-			 dir('d:\\DevOps\\bin\\') {
-			     bat label: 'runAcmsCmpl', script: 'java -jar ./jar/ibmicmd.jar -c "ACMSCREATE PROJECT(J127404) ENV(DVP KORCZA03) FAILURE(*CONT) LISTING(*YES) CPYFFMTOPT(*NOCHK) SBMJOB(*NO) JOBD(ACMSSECMRP ACMSCTL) OUTQ(*USRPRF) REL(ICBSV710/ICBSV710/AIBINTMRO2)" "RUNCNVPGM PGM(PPTJ127404) DBLIB(POZAT01DB1)"'
-			 }					
+             println("Hello ${params.PROJECT}")
+			 bat label: 'runAcmsCmpl', script: 'java -jar ./jar/ibmicmd.jar -c "ACMSCREATE PROJECT(J127404) ENV(DVP KORCZA03) FAILURE(*CONT) LISTING(*YES) CPYFFMTOPT(*NOCHK) SBMJOB(*NO) JOBD(ACMSSECMRP ACMSCTL) OUTQ(*USRPRF) REL(ICBSV710/ICBSV710/AIBINTMRO2)" "RUNCNVPGM PGM(PPTJ127404) DBLIB(POZAT01DB1)"'
           }
         }
     }
