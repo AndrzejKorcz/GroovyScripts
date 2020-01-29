@@ -41,6 +41,11 @@ pipeline {
     stage('Test') {
       steps {
         echo 'Testing...'
+        script{
+          if ("${params.InvokeUnitTest}" == "Yes") { 
+             println("Run unit tests")  
+          }
+        }
       }
     }
 	
