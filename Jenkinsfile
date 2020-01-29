@@ -31,7 +31,7 @@ pipeline {
                println("Run convert commend: ${pgm}") 
                cmd = "java -jar ./jar/ibmicmd.jar -c ${acms} ${pgm}"
              } 
-             println("Current path: ${pwd}")
+ 
              println("Java command: ${cmd}")
 			 bat label: 'runAcmsCmpl', script: "${cmd}"
           }
