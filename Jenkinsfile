@@ -2,7 +2,7 @@ pipeline {
   agent {
     node {
       label 'master'
-      customWorkspace 'd:/DevOps/bin/'
+      customWorkspace 'd:/DevOps/bin/customWorkspace'
     }
   }
     
@@ -22,14 +22,14 @@ pipeline {
              def acms = '"' + "ACMSCREATE PROJECT(${params.Project}) ENV(DVP KORCZA03) FAILURE(*CONT) LISTING(*YES) CPYFFMTOPT(*NOCHK) SBMJOB(*NO) JOBD(ACMSSECMRP ACMSCTL) OUTQ(*USRPRF) REL(ICBSV710/ICBSV710/AIBINTMRO2)" + '"'
              println("API acms: ${acms}") 
 
-             def cmd = "java -jar ./jar/ibmicmd.jar -c ${acms}"
+             def cmd = "java -jar ../jar/ibmicmd.jar -c ${acms}"
              
              if ("${params.InvokeConvPgm}" == "Yes") { 
                def ConvPgmName = 'PPTJ127404'
                def DBLib = 'POZAT01DB1'
                def pgm = '"' + "RUNCNVPGM PGM(${ConvPgmName}) DBLIB(${DBLib})" + '"'
                println("Run convert commend: ${pgm}") 
-               cmd = "java -jar ./jar/ibmicmd.jar -c ${acms} ${pgm}"
+               cmd = "java -jar ../jar/ibmicmd.jar -c ${acms} ${pgm}"
              } 
  
              println("Java command: ${cmd}")
