@@ -2,8 +2,11 @@ pipeline {
   agent {
     node {
       label 'master'
-      customWorkspace 'd:/DevOps/bin/customWorkspace'
     }
+  }
+  
+  environment {
+      DEVOPS_FOLDER = 'd:\\DevOps\\bin\\'
   }
     
   parameters {
@@ -17,23 +20,26 @@ pipeline {
     stage('Build') {
         steps {
           echo 'Building..'
-          script{
+          script {
              println("Running job ${env.JOB_NAME}")
              def acms = '"' + "ACMSCREATE PROJECT(${params.Project}) ENV(DVP KORCZA03) FAILURE(*CONT) LISTING(*YES) CPYFFMTOPT(*NOCHK) SBMJOB(*NO) JOBD(ACMSSECMRP ACMSCTL) OUTQ(*USRPRF) REL(ICBSV710/ICBSV710/AIBINTMRO2)" + '"'
              println("API acms: ${acms}") 
 
-             def cmd = "java -jar ../jar/ibmicmd.jar -c ${acms}"
+             def cmd = "java -jar ./jar/ibmicmd.jar -c ${acms}"
              
              if ("${params.InvokeConvPgm}" == "Yes") { 
                def ConvPgmName = 'PPTJ127404'
                def DBLib = 'POZAT01DB1'
                def pgm = '"' + "RUNCNVPGM PGM(${ConvPgmName}) DBLIB(${DBLib})" + '"'
                println("Run convert commend: ${pgm}") 
-               cmd = "java -jar ../jar/ibmicmd.jar -c ${acms} ${pgm}"
+               cmd = "java -jar ./jar/ibmicmd.jar -c ${acms} ${pgm}"
              } 
  
              println("Java command: ${cmd}")
-			 bat label: 'runAcmsCmpl', script: "${cmd}"
+			 
+			 dir("${DEVOPS_FOLDER}") {
+			   bat label: 'runAcmsCmpl', script: "${cmd}"
+			 }
           }
         }
     }
@@ -42,8 +48,15 @@ pipeline {
       steps {
         echo 'Testing...'
         script{
-          if ("${params.InvokeUnitTest}" == "Yes") { 
-             println("Run unit tests")  
+          if ("${params.InvokeUnitTest}" == "Yes") {
+			 def unitTest = '"' + "RUCALLTST TSTPGM(KORCZA03/APB9017U) RCLRSC(*ALWAYS)" + '"'
+			 def cmd = "java -jar ./jar/ibmicmd.jar -c ${unitTest}"
+			 
+			 println("Java command: ${cmd}")  
+			 
+			 dir("${DEVOPS_FOLDER}") {
+			   bat label: 'runUnitTest', script: "${cmd}"
+			 }			 
           }
         }
       }
