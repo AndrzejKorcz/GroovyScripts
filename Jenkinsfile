@@ -49,7 +49,14 @@ pipeline {
         echo 'Testing...'
         script{
           if ("${params.InvokeUnitTest}" == "Yes") {
-			 def unitTest = '"' + "RUCALLTST TSTPGM(KORCZA03/APB9017U) RCLRSC(*ALWAYS)" + '"'
+		     def userInput = input(
+                 id: 'userInput', message: 'Let\'s run some unit tests?', parameters: [
+                 [$class: 'TextParameterDefinition', defaultValue: 'APB9017U', description: 'Unit test names', name: 'unittestname']
+             ])
+											 
+		     println("Response input: ${userInput}")
+			 
+			 def unitTest = '"' + "RUCALLTST TSTPGM(${userInput}) RCLRSC(*ALWAYS)" + '"'
 			 def cmd = "java -jar ./jar/ibmicmd.jar -c ${unitTest}"
 			 
 			 println("Java command: ${cmd}")  
