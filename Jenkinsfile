@@ -57,8 +57,12 @@ pipeline {
 		     println("Response input: ${userInput}")
 			 
 			 def unitTest = '"' + "RUCALLTST TSTPGM(${userInput}) RCLRSC(*ALWAYS)" + '"'
-			 def cmd = "java -jar ./jar/ibmicmd.jar -c ${unitTest}"
+			 def cc = '"' + "QDEVTOOLS/CODECOV CMD(RUCALLTST TSTPGM(KORCZA03/APB9016U)) MODULE((KORCZA03/APB9016U *SRVPGM *ALL)) OUTSTMF('/home/KORCZA03/APB9016U.cczip')" + '"'
 			 
+			 println("CC: ${cc}") 
+			 
+			 def cmd = "java -jar ./jar/ibmicmd.jar -c ${unitTest} ${cc}"
+			 		 
 			 println("Java command: ${cmd}")  
 			 
 			 dir("${DEVOPS_FOLDER}") {
@@ -70,8 +74,26 @@ pipeline {
     }
 	
     stage('Deploy') {
+	 input {
+        message "Should we continue?"
+        ok "Yes, we should."
+     }
        steps {
           echo 'Deploying...'
+		  script {
+             def acms = '"' + "ACMSPROMOT OBJ(*PROJECT) PROJECT(${params.Project}) ENV(DVP KORCZA03) FAILURE(*CONT) LISTING(*YES) CPYFFMTOPT(*NOCHK) JOBD(ACMSSECMRP ACMSCTL) OUTQ(*USRPRF) REL(ICBSV710/ICBSV710/AIBINTMRO2)" + '"'			                  
+             println("API acms: ${acms}") 
+
+             def cmd = "java -jar ./jar/ibmisbmcmd.jar -c ${acms}"	
+
+             println("Java command: ${cmd}")
+			 
+			 dir("${DEVOPS_FOLDER}") {
+			   def echo = bat label: 'runAcmsPromote', script: "${cmd}"
+			   println("Echo: $echo")
+			 }
+			 
+		  }
        }
     }
 	
@@ -88,9 +110,6 @@ pipeline {
     }
     unstable {
       echo 'current Pipeline has "unstable" state, usually by a failed test, code violations and other causes, in order to run. Usually represented in a web UI with a yellow indication.'
-    }
-    changed {
-      echo 'can only be run if the current Pipeline is running at a different state than the previously completed Pipeline'
     }
   }
 }
