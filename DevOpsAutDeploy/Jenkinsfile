@@ -1,0 +1,138 @@
+def modules = [:]
+
+def props = null
+def template = null
+def java = null
+def externalMethod = null
+def taskProperties = null
+node {
+    checkout scm
+    props = readProperties file:"${workspace}/env.properties"
+    template = readProperties file:"${workspace}/template.properties"
+    java = readProperties file:"${workspace}/java.properties"
+    //todo!!
+    // externalMethod = load("${workspace}/externalMethod.groovy")
+    // modules.external = load "${workspace}/externalMethod.groovy"
+    // println(externalMethod.concat("a", "b"))
+}
+
+pipeline {
+  agent {
+    node {
+      label 'master'
+    }
+  }
+  
+  environment {
+      DEVOPS_FOLDER = "${props.source}"
+  }
+    
+  parameters {
+     string(name: 'Project', defaultValue: 'DEVOPS', description: 'Enter the name of the task in ACMS.')
+     string(name: 'Developer', defaultValue: 'KORCZA03', description: 'Enter developer name.')
+  }
+  
+  stages {
+    stage("Prepare"){
+        steps{
+            script {
+                println("Running job ${env.JOB_NAME}")
+                def member = "/QSYS.LIB/${params.Developer}.LIB/JENKINS.FILE/${params.Project}.MBR"
+                def propFile = "${params.Project}.properties" 
+                def remoteFile = "${props.remote}${propFile}"
+
+                def cpyToSmtf  = '"' + String.format("${template.cpytosmtf}", "${member}", "${remoteFile}") + '"'       
+                def runCpyToSmtf = "${java.javajar} ${java.jaribmcmd} ${cpyToSmtf}"
+                def runCpyTxtFromIfs = "${java.javajar} ${java.jaribmifscpytxtfromifs}  -r ${remoteFile} -l ${workspace}/${propFile} -c"
+             
+                def echo = null
+                dir("${DEVOPS_FOLDER}") {
+			              echo = bat label: 'Copy to SMTF', returnStdout: true, script: "${runCpyToSmtf}"
+                    echo = bat label: 'Copy from IFS', returnStdout: true, script: "${runCpyTxtFromIfs}"
+			          }
+                taskProperties = readProperties file:"${workspace}/${propFile}"
+            }
+        }
+    }
+    stage('Build') {
+        steps {
+          script {
+             def acmsCompileTask = '"' + String.format("${template.acmscompile}", "${params.Project}", "${taskProperties.ENV}", "${params.Developer}", "${taskProperties.RELEASE}") + '"'
+             def runAcmsCompileTask = "${java.javajar} ${java.jaribmcmd} ${acmsCompileTask}"
+             def mainCnvPgmCmd = ""
+
+             def mainCnvPgm = "${taskProperties.MAINCNVPGM}"
+             if (mainCnvPgm?.trim()) {
+               mainCnvPgmCmd = '"' + String.format("${template.cnvpgmcmd}", "${mainCnvPgm}", "${taskProperties.DBLIB}") + '"'
+             }
+ 			 
+			       dir("${DEVOPS_FOLDER}") {
+			          def echo = bat label: 'Building..', returnStdout: true, script: "${runAcmsCompileTask} ${mainCnvPgmCmd}"
+			       }
+          }
+        }
+    }
+  
+    stage('Test') {
+      steps {
+        script{
+          def unitTest = "${taskProperties.UNITTEST}"
+          if (unitTest?.trim()) {
+            def ccFile = "${unitTest}.cczip"
+            def unitTestCmd = '"' + String.format("${template.rununittest}", "${unitTest}") + '"'         
+            def codeCoverageCmd = '"' + String.format("${template.codecoverage}", "${unitTest}", "${props.remote}${ccFile}") + '"'	         
+            def runUnitTestWithCC = "${java.javajar} ${java.jaribmcmd} ${unitTestCmd} ${codeCoverageCmd}"
+            def remoteFile = "${props.remote}${ccFile}"
+            def localFile = "${props.local}${ccFile}"
+            //Minimum Acceptable Code Coverage
+            def percent = "${taskProperties.MINACCEPTCODECOVERAGE}"
+             if (!percent?.trim()) {
+               percent = "0"
+             }
+            def runCpyByteFromIfs = "${java.javajar} ${java.jaribmifscpybytefromifs} -r ${remoteFile} -l ${localFile} -c"			 
+            def runCodeCoverageReport = "${java.javajar} ${java.jarrpgcc} -f ${localFile} -p ${percent}" 
+            def echo = null
+			      dir("${DEVOPS_FOLDER}") {
+              echo = bat label: 'Run unit test', returnStdout: true, script: "${runUnitTestWithCC}"
+              echo = bat label: 'Copy report from IFS', returnStdout: true, script: "${runCpyByteFromIfs}"
+              echo = bat label: 'Get code coverage raport', returnStdout: true, script: "${runCodeCoverageReport}"
+            }	 
+          }
+        }
+      }
+    }
+	
+    stage('Deploy') {
+	    input {
+           message "Should we continue?"
+           ok "Yes, we should."
+        }
+       steps {
+		      script {		                  
+            def acmsPromoteTask = '"' + String.format("${template.acmspromote}", "${params.Project}", "${taskProperties.ENV}", "${params.Developer}", "${taskProperties.RELEASE}") + '"'
+            def runAcmsPromoteTask = "${java.javajar} ${java.jaribmcmd} ${acmsPromoteTask}"	
+
+			      dir("${DEVOPS_FOLDER}") {
+			        def echo = bat label: 'Deploying...', returnStdout: true, script: "${runAcmsPromoteTask}"
+			      }
+
+		      }
+       }
+    }
+	
+  }
+  post {
+    always {
+      echo 'always runs regardless of the completion status of the Pipeline run'
+    }
+    success {
+      echo 'step will run only if the build is successful'
+    }
+    failure {
+      echo 'only when the Pipeline is currently in a "failed" state run, usually expressed in the Web UI with the red indicator.'
+    }
+    unstable {
+      echo 'current Pipeline has "unstable" state, usually by a failed test, code violations and other causes, in order to run. Usually represented in a web UI with a yellow indication.'
+    }
+  }
+}
