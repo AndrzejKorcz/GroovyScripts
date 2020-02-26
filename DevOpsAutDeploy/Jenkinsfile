@@ -32,23 +32,18 @@ pipeline {
                 println("Running job ${env.JOB_NAME}")
 
                 def map = [:]
-                map.put("t_cpytosmtf", props.template.cpytosmtf)   
-                map.put("member", String.format(props.template.member, params.Developer, params.Project))
-                map.put("remotefile", "${props.env.remote}${params.Project}.properties")
-                map.put("localfile", "${workspace}/${params.Project}.properties")
-                map.put("javajaribmcmd", props.java.javajaribmcmd)
-                map.put("javajaribmifscpytxtfromifs", props.java.javajaribmifscpytxtfromifs)
-
+                map.put("props", props)
+                map.put("params", params)
+                map.put("workspace", workspace)
+                
                 dir("${DEVOPS_FOLDER}") {
                     externalMethod.cmdExec(externalMethod.cmdCopyPropFromAcmsTask(map))
                     externalMethod.cmdExec(externalMethod.copyPropFileFromIfs(map))                
 			          }
 
                 //get properties from acms task
-                props.taskProperties = readProperties file:map.localfile
-
-                mp.put("Project", params.Project);
-                mp.put("Developer", params.Developer);
+                def localfile = "${workspace}/${params.Project}.properties"
+                props.taskProperties = readProperties file:localfile
             }
         }
     }
@@ -56,56 +51,42 @@ pipeline {
         steps {
             script {
                 def map = [:]
-                map.put("javajaribmcmd", props.java.javajaribmcmd)
-                map.put("acmscompilecmd", String.format(props.template.acmscompile, params.Project, props.taskProperties.ENV, params.Developer, props.taskProperties.RELEASE))
-                map.put("t_cnvpgmcmd", props.template.cnvpgmcmd)
-                map.put("developer", params.Developer)
-                map.put("maincnvpgm", props.taskProperties.MAINCNVPGM)                        
-
+                map.put("props", props)
+                map.put("params", params)
+                
 			          dir("${DEVOPS_FOLDER}") {
-                    externalMethod.cmdExec(externalMethod.runAcmsCompileTask(map))  
+                    externalMethod.cmdExec(externalMethod.acmsCompileTask(map))  
 			          }
             }
         }
     }
   
     stage('UnitTest') {
-      steps {
-        script{
-          def map = [:]
-          map.put("javajaribmcmd", props.java.javajaribmcmd)
-          map.put("javajaribmifscpybytefromifs", props.java.javajaribmifscpybytefromifs)
-          map.put("javajarrpgcc", props.java.javajarrpgcc)
-          map.put("unittest", props.taskProperties.UNITTEST)
-          map.put("t_rununittest", props.template.rununittest)
-          map.put("t_codecoverage", props.template.codecoverage)
-          map.put("remote", props.env.remote)
-          map.put("local", props.env.local)
-          map.put("percent", props.taskProperties.MINACCEPTCODECOVERAGE)
-        
-          def list = externalMethod.prepareUnitTest(map)
-          dir("${DEVOPS_FOLDER}") {
-            list.each {
-                externalMethod.cmdExec(it)                      
+        steps {
+            script{
+              def map = [:]
+              map.put("props", props)   
+            
+              def list = externalMethod.prepareUnitTest(map)
+              dir("${DEVOPS_FOLDER}") {
+                list.each {
+                    externalMethod.cmdExec(it)                      
+                }
+              }
             }
-          }
         }
-      }
     }
 	
     stage('Deploy') {
-	    input {
-           message "Should we continue?"
-           ok "Yes, we should."
-        }
        steps {
-		      script {		                  
-            def acmsPromoteTask = '"' + String.format("${props.template.acmspromote}", "${params.Project}", "${props.taskProperties.ENV}", "${params.Developer}", "${props.taskProperties.RELEASE}") + '"'
-            def runAcmsPromoteTask = "${props.java.javajar} ${props.java.ibmisbmcmd} ${acmsPromoteTask}"	
+		      script {
+              def map = [:]
+              map.put("props", props)
+              map.put("params", params)
 
-			      dir("${DEVOPS_FOLDER}") {
-			        def echo = bat label: 'Deploying...', returnStdout: true, script: "${runAcmsPromoteTask}"
-			      }
+			        dir("${DEVOPS_FOLDER}") {
+                 externalMethod.cmdExec(externalMethod.acmsPromoteTask(map))
+			        }
 
 		      }
        }
@@ -114,30 +95,15 @@ pipeline {
     stage('Test') {
       steps {
         script {
-             // step 1. change env
-             // step 2. build env by run cnv pgm for database
-             // step 3. run integration tests            
-             def changeEnv = '"' + "SETPOZAT01" + '"'
-             def runChangeEnv = "${props.java.javajar} ${props.java.jaribmcmd} ${changeEnv}"
-
-             def mainCnvPgm = "${props.taskProperties.MAINCNVPGM}"
-             def dblib = "${props.taskProperties.DBLIB}"
-             def testPgm = "${props.taskProperties.TESTPGM}"
-            
-             def mainCnvPgmCmd = ""
-             def testPgmCmd = ""
-             if (!externalMethod.isNullOrEmpty(mainCnvPgm) && !externalMethod.isNullOrEmpty(dblib)) {
-               mainCnvPgmCmd = '"' + String.format("${props.template.cnvpgmcmd}", "${mainCnvPgm}", "${dblib}") + '"'
-              }
-             if (!externalMethod.isNullOrEmpty(testPgmCmd)) {
-               testPgmCmd = '"' + String.format("${props.template.runtest}", "${testPgm}") + '"'
-             } 
-
+              def map = [:]
+              map.put("props", props)
+              map.put("params", params)
+              def list = externalMethod.prepareIntegrationTest(map)
               dir("${DEVOPS_FOLDER}") {
-			            def echo = bat label: 'Building..', returnStdout: true, script: "${runChangeEnv} ${mainCnvPgmCmd} ${testPgmCmd}"
-			        }
-
-          println(mp)
+                list.each {
+                    externalMethod.cmdExec(it)                    
+                }
+              }             
         }
       }
     }
