@@ -1,23 +1,12 @@
 def props = [:]
 def mp = [:]
 
-// def props = null
-def template = null
-// def java = null
-
-// def externalCall = null
-def externalMethod = null
-
-def taskProperties = null
-
 node {
     checkout scm
     props.env = readProperties file:"${workspace}/env.properties"
-    template = readProperties file:"${workspace}/template.properties"
+    props.template = readProperties file:"${workspace}/template.properties"
     props.java = readProperties file:"${workspace}/java.properties"
-     //modules.externalCall = load("${workspace}/externalCall.groovy")
     externalMethod = load("${workspace}/externalMethod.groovy") 
-    // externalCall = load("${workspace}/externalCall.groovy")
 }
 
 pipeline {
@@ -41,80 +30,64 @@ pipeline {
         steps{
             script {
                 println("Running job ${env.JOB_NAME}")
-                def member = "/QSYS.LIB/${params.Developer}.LIB/JENKINS.FILE/${params.Project}.MBR"
-                def propFile = "${params.Project}.properties" 
-                def remoteFile = "${props.env.remote}${propFile}"
 
-                def cpyToSmtf  = '"' + String.format("${template.cpytosmtf}", "${member}", "${remoteFile}") + '"'       
-                def runCpyToSmtf = "${props.java.javajar} ${props.java.jaribmcmd} ${cpyToSmtf}"
-                def runCpyTxtFromIfs = "${props.java.javajar} ${props.java.jaribmifscpytxtfromifs}  -r ${remoteFile} -l ${workspace}/${propFile} -c"
+                def map = [:]
+                map.put("t_cpytosmtf", props.template.cpytosmtf)   
+                map.put("member", String.format(props.template.member, params.Developer, params.Project))
+                map.put("remotefile", "${props.env.remote}${params.Project}.properties")
+                map.put("localfile", "${workspace}/${params.Project}.properties")
+                map.put("javajaribmcmd", props.java.javajaribmcmd)
+                map.put("javajaribmifscpytxtfromifs", props.java.javajaribmifscpytxtfromifs)
 
-                def echo = null
                 dir("${DEVOPS_FOLDER}") {
-			              echo = bat label: 'Copy to SMTF', returnStdout: true, script: "${runCpyToSmtf}"
-                    echo = bat label: 'Copy from IFS', returnStdout: true, script: "${runCpyTxtFromIfs}"
-                  
+                    externalMethod.cmdExec(externalMethod.cmdCopyPropFromAcmsTask(map))
+                    externalMethod.cmdExec(externalMethod.copyPropFileFromIfs(map))                
 			          }
-                taskProperties = readProperties file:"${workspace}/${propFile}"
 
-                mp.put("Project","${params.Project}");
-                mp.put("Developer","${params.Developer}");
+                //get properties from acms task
+                props.taskProperties = readProperties file:map.localfile
+
+                mp.put("Project", params.Project);
+                mp.put("Developer", params.Developer);
             }
         }
     }
     stage('Build') {
         steps {
-          script {
-             def acmsCompileTask = '"' + String.format("${template.acmscompile}", "${params.Project}", "${taskProperties.ENV}", "${params.Developer}", "${taskProperties.RELEASE}") + '"'
-             def runAcmsCompileTask = "${props.java.javajar} ${props.java.jaribmcmd} ${acmsCompileTask}"
-             def mainCnvPgmCmd = ""
+            script {
+                def map = [:]
+                map.put("javajaribmcmd", props.java.javajaribmcmd)
+                map.put("acmscompilecmd", String.format(props.template.acmscompile, params.Project, props.taskProperties.ENV, params.Developer, props.taskProperties.RELEASE))
+                map.put("t_cnvpgmcmd", props.template.cnvpgmcmd)
+                map.put("developer", params.Developer)
+                map.put("maincnvpgm", props.taskProperties.MAINCNVPGM)                        
 
-             def mainCnvPgm = "${taskProperties.MAINCNVPGM}"
-             if (mainCnvPgm?.trim()) {
-                mainCnvPgmCmd = '"' + String.format("${template.cnvpgmcmd}", "${mainCnvPgm}", "${params.Developer}") + '"'
-             }
- 			 
-			       dir("${DEVOPS_FOLDER}") {
-			          def echo = bat label: 'Building..', returnStdout: true, script: "${runAcmsCompileTask} ${mainCnvPgmCmd}"
-			       }
-          }
+			          dir("${DEVOPS_FOLDER}") {
+                    externalMethod.cmdExec(externalMethod.runAcmsCompileTask(map))  
+			          }
+            }
         }
     }
   
     stage('UnitTest') {
       steps {
         script{
-          def unitTest = "${taskProperties.UNITTEST}"
-          if (unitTest?.trim()) {
-            def list = []
-            unitTest.tokenize(',').each {
-               println "Unit test: ${it}"  
-               list.add("${it}")       
-               def ccFile = "${it}.cczip"
-               def unitTestCmd = '"' + String.format("${template.rununittest}", "${it}") + '"'         
-               def codeCoverageCmd = '"' + String.format("${template.codecoverage}", "${it}", "${props.env.remote}${ccFile}") + '"'	         
-               def runUnitTestWithCC = "${props.java.javajar} ${props.java.jaribmcmd} ${unitTestCmd} ${codeCoverageCmd}"
-               def remoteFile = "${props.env.remote}${ccFile}"
-               def localFile = "${props.env.local}${ccFile}"
-               //Minimum Acceptable Code Coverage
-               def percent = "${taskProperties.MINACCEPTCODECOVERAGE}"
-               if (externalMethod.isNullOrEmpty(percent)) {
-                 println("Minimum Acceptable Code Coverage is null or empty. Default is 0")
-                 percent = "0"
-               }
- 
-               def runCpyByteFromIfs = "${props.java.javajar} ${props.java.jaribmifscpybytefromifs} -r ${remoteFile} -l ${localFile} -c"			 
-               def runCodeCoverageReport = "${props.java.javajar} ${props.java.jarrpgcc} -f ${localFile} -p ${percent}" 
-
-               def echo = null
-			         dir("${DEVOPS_FOLDER}") {
-                 echo = bat label: 'Run unit test', returnStdout: true, script: "${runUnitTestWithCC}"
-                 echo = bat label: 'Copy report from IFS', returnStdout: true, script: "${runCpyByteFromIfs}"
-                 echo = bat label: 'Get code coverage raport', returnStdout: true, script: "${runCodeCoverageReport}"
-               }
+          def map = [:]
+          map.put("javajaribmcmd", props.java.javajaribmcmd)
+          map.put("javajaribmifscpybytefromifs", props.java.javajaribmifscpybytefromifs)
+          map.put("javajarrpgcc", props.java.javajarrpgcc)
+          map.put("unittest", props.taskProperties.UNITTEST)
+          map.put("t_rununittest", props.template.rununittest)
+          map.put("t_codecoverage", props.template.codecoverage)
+          map.put("remote", props.env.remote)
+          map.put("local", props.env.local)
+          map.put("percent", props.taskProperties.MINACCEPTCODECOVERAGE)
+        
+          def list = externalMethod.prepareUnitTest(map)
+          dir("${DEVOPS_FOLDER}") {
+            list.each {
+                externalMethod.cmdExec(it)                      
             }
-            mp.put("minccpercent", "${taskProperties.MINACCEPTCODECOVERAGE}")
-            mp.put("unittest", list);
           }
         }
       }
@@ -127,7 +100,7 @@ pipeline {
         }
        steps {
 		      script {		                  
-            def acmsPromoteTask = '"' + String.format("${template.acmspromote}", "${params.Project}", "${taskProperties.ENV}", "${params.Developer}", "${taskProperties.RELEASE}") + '"'
+            def acmsPromoteTask = '"' + String.format("${props.template.acmspromote}", "${params.Project}", "${props.taskProperties.ENV}", "${params.Developer}", "${props.taskProperties.RELEASE}") + '"'
             def runAcmsPromoteTask = "${props.java.javajar} ${props.java.ibmisbmcmd} ${acmsPromoteTask}"	
 
 			      dir("${DEVOPS_FOLDER}") {
@@ -147,17 +120,17 @@ pipeline {
              def changeEnv = '"' + "SETPOZAT01" + '"'
              def runChangeEnv = "${props.java.javajar} ${props.java.jaribmcmd} ${changeEnv}"
 
-             def mainCnvPgm = "${taskProperties.MAINCNVPGM}"
-             def dblib = "${taskProperties.DBLIB}"
-             def testPgm = "${taskProperties.TESTPGM}"
+             def mainCnvPgm = "${props.taskProperties.MAINCNVPGM}"
+             def dblib = "${props.taskProperties.DBLIB}"
+             def testPgm = "${props.taskProperties.TESTPGM}"
             
              def mainCnvPgmCmd = ""
              def testPgmCmd = ""
              if (!externalMethod.isNullOrEmpty(mainCnvPgm) && !externalMethod.isNullOrEmpty(dblib)) {
-               mainCnvPgmCmd = '"' + String.format("${template.cnvpgmcmd}", "${mainCnvPgm}", "${dblib}") + '"'
+               mainCnvPgmCmd = '"' + String.format("${props.template.cnvpgmcmd}", "${mainCnvPgm}", "${dblib}") + '"'
               }
              if (!externalMethod.isNullOrEmpty(testPgmCmd)) {
-               testPgmCmd = '"' + String.format("${template.runtest}", "${testPgm}") + '"'
+               testPgmCmd = '"' + String.format("${props.template.runtest}", "${testPgm}") + '"'
              } 
 
               dir("${DEVOPS_FOLDER}") {
