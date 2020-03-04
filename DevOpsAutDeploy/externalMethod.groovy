@@ -1,3 +1,12 @@
+import java.text.SimpleDateFormat
+// import groovy.json.JsonBuilder
+import groovy.json.*
+
+def getTimestamp() {
+  def dateFormat = new SimpleDateFormat("yyyyMMdd HH:mm:ss")
+  def date = new Date()
+  return dateFormat.format(date)   
+}
 
 def concatenate(... p) {
     def s = ""
@@ -21,7 +30,6 @@ def cmdCopyPropFromAcmsTask(map) {
     def member = String.format(templMember, map.params.get('Developer'), project)
     def remoteFile = "${map.props.get('env').get('remote')}${project}.properties"
     def cpyToSmtfCmd  = '"' + String.format(templCpyToSmtf, member, remoteFile) + '"' 
-
     return concatenate(javaJarIbmCmd, cpyToSmtfCmd)
 }
 
@@ -30,7 +38,6 @@ def copyPropFileFromIfs(map) {
     def fileName = "${map.params.get('Project')}.properties"
     def remoteFile = "${map.props.get('env').get('remote')}${fileName}"
     def localFile = "${map.workspace}/${fileName}"
-
     return concatenate(javaJarIbmIfsCpyTxtFromIfs, "-r", remoteFile, "-l", localFile, "-c")
 }
 
@@ -48,7 +55,6 @@ def acmsCompileTask(map) {
     if (!isNullOrEmpty(mainCnvPgm)) { 
           cnvPgmCmd = '"' + String.format(templCnvPgmCmd, mainCnvPgm, developer) + '"'
     }
-
     return concatenate(javaJarIbmCmd, acmsCompileCmd, cnvPgmCmd)
 }
 
@@ -61,8 +67,10 @@ def getAcceptableCodeCoverage(percent) {
 }
 
 def prepareUnitTest(map) {
-    def list = []
+    def listCommand = []
+    def listReport = []
     def varMap = [:] 
+    def outMap = [:]
 
     def javaJarIbmCmd = map.props.get('java').get('javajaribmcmd')
     def javaJarIbmIfsCpyByteFromIfs = map.props.get('java').get('javajaribmifscpybytefromifs')
@@ -76,21 +84,47 @@ def prepareUnitTest(map) {
     
     varMap.percent = externalMethod.getAcceptableCodeCoverage(percent)
     if (!isNullOrEmpty(unitTest)) {
-        unitTest.tokenize(',').each {
-            println "Unit test: ${it}" 
-            varMap.ccFile = "${it}.cczip"
-            varMap.unitTestCmd = '"' + String.format(templRunUnitTest, it) + '"'
-            varMap.remoteFile = "${remote}${varMap.ccFile}"
-            varMap.localFile = "${local}${varMap.ccFile}"
-            varMap.codeCoverageCmd = '"' + String.format(templCodeCoverage, it, varMap.remoteFile) + '"'	 
-		          
-            list.add(concatenate(javaJarIbmCmd, varMap.unitTestCmd, varMap.codeCoverageCmd))
-            list.add(concatenate(javaJarIbmIfsCpyByteFromIfs, "-r", varMap.remoteFile, "-l", varMap.localFile, "-c"))
-            list.add(concatenate(javaJarRpgCc, "-f", varMap.localFile, "-p", varMap.percent))    
-        }
+       unitTest.tokenize(',').each {
+         println "Unit test: ${it}" 
+         varMap.ccFile = "${it}.cczip"
+         varMap.jsonFile = "${map.workspace}/${it}.json"
+         varMap.unitTestCmd = '"' + String.format(templRunUnitTest, it) + '"'
+         varMap.remoteFile = "${remote}${varMap.ccFile}"
+         varMap.localFile = "${local}${varMap.ccFile}"
+         varMap.codeCoverageCmd = '"' + String.format(templCodeCoverage, it, varMap.remoteFile) + '"'	 
+		       
+         listCommand.add(concatenate(javaJarIbmCmd, varMap.unitTestCmd, varMap.codeCoverageCmd))
+         listCommand.add(concatenate(javaJarIbmIfsCpyByteFromIfs, "-r", varMap.remoteFile, "-l", varMap.localFile, "-c"))
+         listCommand.add(concatenate(javaJarRpgCc, "-f", varMap.localFile, "-p", varMap.percent, "-s", varMap.jsonFile))             
+         listReport.add("${it},${varMap.jsonFile}")  
+       }
+       outMap.put("command", listCommand)
+       outMap.put("report", listReport)
     }
-    return list
-}    
+    return outMap
+}   
+
+def reportListToMap(list) {
+    map = [:]
+    if (!isNullOrEmpty(list)) {
+      int index = 0
+      final utName = 1
+      final utPath = 2
+      list.tokenize(',').each {      
+        index ++
+            switch(index) {
+                case utName: 
+                  map.put("unitTestName", it)
+                  break
+                case utPath: 
+                  map.put("unitTestPath", it)
+                  break
+            }
+      }     
+    } 
+  return map  
+}
+         
 
 def acmsPromoteTask(map) {
     def javaJarIbmSbmCmd = map.props.get('java').get('javajaribmsbmcmd')   
@@ -99,8 +133,7 @@ def acmsPromoteTask(map) {
     def env = map.props.get('taskProperties').get('ENV')
     def developer = map.params.get('Developer')
     def release = map.props.get('taskProperties').get('RELEASE')                        
-    def acmsPromoteTaskCmd = '"' + String.format(templAcmsPromote, project, env, developer, release) + '"'
-    
+    def acmsPromoteTaskCmd = '"' + String.format(templAcmsPromote, project, env, developer, release) + '"'   
     return concatenate(javaJarIbmSbmCmd, acmsPromoteTaskCmd)
 }
 
@@ -126,10 +159,28 @@ def prepareIntegrationTest(map) {
             testPgmCmd = '"' + String.format(templRunTest, it) + '"'		          
             list.add(concatenate(javaJarIbmCmd, testPgmCmd)) 
         }
-    }
-  
+    } 
     return list
-}            
+}    
+
+def metricsDefault() {
+    map = [:]
+    map.put("start", 0)
+    map.put("prepare", false)
+    map.put("build", false)
+    map.put("unittest", false)
+    map.put("deploy", false)
+    map.put("test", false)
+    map.put("report", false)
+    map.put("end", 0)
+    map.put("utreport", null)
+    return map 
+}
+
+def mapToJson(map) {
+    def json = JsonOutput.toJson(map)
+    return json.toString()
+}
 
 
 return this;

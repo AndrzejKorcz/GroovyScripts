@@ -1,5 +1,6 @@
 def props = [:]
-def mp = [:]
+def metrics = [:]
+def jsonString = null
 
 node {
     checkout scm
@@ -29,8 +30,10 @@ pipeline {
     stage("Prepare"){
         steps{
             script {
-                println("Running job ${env.JOB_NAME}")
+                metrics = externalMethod.metricsDefault()
+                metrics.start = externalMethod.getTimestamp()
 
+                println("Running job ${env.JOB_NAME}")
                 def map = [:]
                 map.put("props", props)
                 map.put("params", params)
@@ -44,10 +47,14 @@ pipeline {
                 //get properties from acms task
                 def localfile = "${workspace}/${params.Project}.properties"
                 props.taskProperties = readProperties file:localfile
+
+                metrics.prepare = true 
+                jsonString = externalMethod.mapToJson(metrics)
+
             }
         }
     }
-    stage('Build') {
+    stage('Build'){
         steps {
             script {
                 def map = [:]
@@ -57,27 +64,47 @@ pipeline {
 			          dir("${DEVOPS_FOLDER}") {
                     externalMethod.cmdExec(externalMethod.acmsCompileTask(map))  
 			          }
+
+                metrics.build = true 
+                jsonString = externalMethod.mapToJson(metrics)
             }
         }
     }
   
-    stage('UnitTest') {
+    stage('UnitTest'){
         steps {
-            script{
+            script {
               def map = [:]
-              map.put("props", props)   
+              def out = [:]
+              map.put("props", props)
+              map.put("workspace", workspace)   
             
-              def list = externalMethod.prepareUnitTest(map)
+              out = externalMethod.prepareUnitTest(map)
+              def list = out.get('command')
               dir("${DEVOPS_FOLDER}") {
                 list.each {
-                    externalMethod.cmdExec(it)                      
+                    externalMethod.cmdExec(it)                   
                 }
               }
+
+              map = null
+              def ccJsonReport
+              def utMmap = [:]
+              list = out.get('report')        
+              list.each {
+                  map = externalMethod.reportListToMap(it)
+                  ccJsonReport = readJSON file: map.get('unitTestPath')  
+                  utMmap.put(map.get('unitTestName'), ccJsonReport)                
+              }
+
+              metrics.utreport = utMmap
+              metrics.unittest = true 
+              jsonString = externalMethod.mapToJson(metrics)
             }
         }
     }
 	
-    stage('Deploy') {
+    stage('Deploy'){
        steps {
 		      script {
               def map = [:]
@@ -87,12 +114,13 @@ pipeline {
 			        dir("${DEVOPS_FOLDER}") {
                  externalMethod.cmdExec(externalMethod.acmsPromoteTask(map))
 			        }
-
+              metrics.deploy = true 
+              jsonString = externalMethod.mapToJson(metrics)
 		      }
        }
     }
 
-    stage('Test') {
+    stage('Test'){
       steps {
         script {
               def map = [:]
@@ -103,9 +131,21 @@ pipeline {
                 list.each {
                     externalMethod.cmdExec(it)                    
                 }
-              }             
+              } 
+              metrics.test = true 
+              jsonString = externalMethod.mapToJson(metrics)            
         }
       }
+    }
+
+    stage("Report"){
+        steps{
+            script {
+              metrics.report = true 
+              metrics.end = externalMethod.getTimestamp()
+              jsonString = externalMethod.mapToJson(metrics)   
+            }
+        }
     }
 	
   }
@@ -113,6 +153,8 @@ pipeline {
   post {
     always {
       echo 'always runs regardless of the completion status of the Pipeline run'
+
+      echo jsonString
     }
     success {
       echo 'step will run only if the build is successful'
