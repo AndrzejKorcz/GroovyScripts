@@ -165,6 +165,7 @@ def prepareIntegrationTest(map) {
 
 def metricsDefault() {
     map = [:]
+    map.put("project", "")
     map.put("start", 0)
     map.put("prepare", false)
     map.put("build", false)
@@ -180,6 +181,26 @@ def metricsDefault() {
 def mapToJson(map) {
     def json = JsonOutput.toJson(map)
     return json.toString()
+}
+
+def sendMail(map) {
+    def javaJarIbmSbmCmd = map.props.get('java').get('javajaribmsbmcmd')   
+    def templSndMail = map.props.get('template').get('sndmail')
+
+    def project = map.params.get('Project')
+    def developer = map.params.get('Developer')
+    def email = map.props.get('env').get('mail')
+    // def subject = "Jenkins Build ${map.status}: for ${project} on ${env} ${developer}" 
+    def subject = "Jenkins Build ${map.status} for ${project}" 
+    def note = "Details: ${map.buildUrl}"
+    def sendMailCmd = '"' + String.format(templSndMail, email, subject, note) + '"'   
+    println sendMailCmd
+    return concatenate(javaJarIbmSbmCmd, sendMailCmd)
+}
+
+def postData(map) {
+    def javaJarPost = map.props.get('java').get('javajarpost')  
+    return concatenate(javaJarPost, "-j", map.json, "-u", map.url)
 }
 
 

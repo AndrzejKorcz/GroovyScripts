@@ -31,8 +31,9 @@ pipeline {
         steps{
             script {
                 metrics = externalMethod.metricsDefault()
+                metrics.project = params.Project
                 metrics.start = externalMethod.getTimestamp()
-
+               
                 println("Running job ${env.JOB_NAME}")
                 def map = [:]
                 map.put("props", props)
@@ -141,9 +142,23 @@ pipeline {
     stage("Report"){
         steps{
             script {
+              def map = [:]
+              map.put("props", props)
+              map.put("params", params)
+              map.put("status", currentBuild.currentResult)
+              map.put("buildUrl", env.BUILD_URL)
+              map.put("json", "{\"name\":\"test\", \"salary\":\"123\"}")
+              map.put("url", "http://dummy.restapiexample.com/api/v1/create")
+             
               metrics.report = true 
               metrics.end = externalMethod.getTimestamp()
               jsonString = externalMethod.mapToJson(metrics)   
+
+
+			        dir("${DEVOPS_FOLDER}") {
+                  externalMethod.cmdExec(externalMethod.postData(map))
+                  externalMethod.cmdExec(externalMethod.sendMail(map))
+			        }
             }
         }
     }
@@ -152,12 +167,12 @@ pipeline {
   // 
   post {
     always {
-      echo 'always runs regardless of the completion status of the Pipeline run'
+      echo 'always runs regardless of the completion status of the Pipeline run 1'
 
       echo jsonString
     }
     success {
-      echo 'step will run only if the build is successful'
+      echo 'step will run only if the build is successful 2'
     }
     failure {
       echo 'only when the Pipeline is currently in a "failed" state run, usually expressed in the Web UI with the red indicator.'
