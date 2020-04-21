@@ -11,15 +11,17 @@ node ('master') {
         
         stage 'Project verify'
         bat 'mvn verify'
-        
-        publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'target/site/jacoco/', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: ''])
-        
+               
         stage 'Project analize - sonar'
         withSonarQubeEnv('sonar-server') {
                 bat 'mvn sonar:sonar'
               }   
               
         stage 'Project install'
-        bat 'mvn install'              
+        bat 'mvn install'   
+        
+         tage 'Report'
+        publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'target/site/jacoco/', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: ''])
+        step([$class: 'JUnitResultArchiver', testResults: 'target/surefire-reports/TEST-*.xml'])
      }  
 }
