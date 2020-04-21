@@ -20,7 +20,7 @@ node ('master') {
         stage 'Project install'
         bat 'mvn install'   
         
-         tage 'Report'
+        stage 'Report'
         publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'target/site/jacoco/', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: ''])
         step([$class: 'JUnitResultArchiver', testResults: 'target/surefire-reports/TEST-*.xml'])
      }  
