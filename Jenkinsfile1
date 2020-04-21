@@ -12,7 +12,7 @@ node ('master') {
         stage 'Project verify'
         bat 'mvn verify'
         
-        step([$class: 'JUnitResultArchiver', testResults: 'target/surefire-reports/TEST-*.xml'])
+        publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: 'target/site/jacoco/', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: ''])
         
         stage 'Project analize - sonar'
         withSonarQubeEnv('sonar-server') {
